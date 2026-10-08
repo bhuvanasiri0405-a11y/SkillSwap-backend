@@ -11,6 +11,7 @@ public class SkillResponse {
     private String name;
     private String category;
     private Skill.SkillType type;
+    private Long ownerId;
     private String ownerName;
 
     public static SkillResponse fromEntity(Skill skill) {
@@ -19,6 +20,7 @@ public class SkillResponse {
                 skill.getName(),
                 skill.getCategory(),
                 skill.getType(),
+                skill.getUser().getId(),
                 skill.getUser().getName()
         );
     }
