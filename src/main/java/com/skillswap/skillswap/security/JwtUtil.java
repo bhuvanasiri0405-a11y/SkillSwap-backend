@@ -1,17 +1,24 @@
 package com.skillswap.skillswap.security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import java.security.Key;
 import java.util.Date;
 
 @Component
 public class JwtUtil {
 
-    // In production, put this in application.properties instead
-    private final Key key = Keys.hmacShaKeyFor("skillswap-super-secret-key-must-be-long-enough-256bits".getBytes());
+    private final Key key;
     private final long EXPIRATION = 1000 * 60 * 60 * 10; // 10 hours
+
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+    }
 
     public String generateToken(String email) {
         return Jwts.builder()
