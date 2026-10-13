@@ -15,7 +15,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/swaps")
-@CrossOrigin(origins = "http://localhost:5173")
 public class SwapRequestController {
 
     private final SwapRequestRepository swapRequestRepository;
@@ -38,7 +37,8 @@ public class SwapRequestController {
             @RequestParam Long senderId,
             @RequestParam Long receiverId,
             @RequestParam Long offeredSkillId,
-            @RequestParam Long requestedSkillId
+            @RequestParam Long requestedSkillId,
+            Authentication authentication
     ) {
 
         User sender = userRepository.findById(senderId).orElse(null);
@@ -46,6 +46,11 @@ public class SwapRequestController {
 
         Skill offeredSkill = skillRepository.findById(offeredSkillId).orElse(null);
         Skill requestedSkill = skillRepository.findById(requestedSkillId).orElse(null);
+
+        User authenticatedUser = userRepository.findByEmailIgnoreCase(authentication.getName()).orElse(null);
+        if (authenticatedUser == null || !authenticatedUser.getId().equals(senderId)) {
+            return ResponseEntity.status(403).body("Only the authenticated user can create a swap request as the sender");
+        }
 
         if (sender == null) {
             return ResponseEntity.badRequest().body("Sender not found");
@@ -61,6 +66,18 @@ public class SwapRequestController {
 
         if (requestedSkill == null) {
             return ResponseEntity.badRequest().body("Requested skill not found");
+        }
+
+        if (!offeredSkill.isActive() || !requestedSkill.isActive()) {
+            return ResponseEntity.badRequest().body("Swap requests can only use active skill listings");
+        }
+
+        if (sender.getId().equals(receiver.getId())) {
+            return ResponseEntity.badRequest().body("You cannot create a swap request with yourself");
+        }
+        if (!offeredSkill.getUser().getId().equals(sender.getId())
+                || !requestedSkill.getUser().getId().equals(receiver.getId())) {
+            return ResponseEntity.badRequest().body("Swap skills must belong to the matching participants");
         }
 
         SwapRequest swapRequest = new SwapRequest();
@@ -79,8 +96,14 @@ public class SwapRequestController {
     // Get requests sent by a user
     @GetMapping("/sent/{userId}")
     public ResponseEntity<List<SwapRequest>> getSentRequests(
-            @PathVariable Long userId
+            @PathVariable Long userId,
+            Authentication authentication
     ) {
+
+        User currentUser = userRepository.findByEmailIgnoreCase(authentication.getName()).orElse(null);
+        if (currentUser == null || !currentUser.getId().equals(userId)) {
+            return ResponseEntity.status(403).build();
+        }
 
         User user = userRepository.findById(userId).orElse(null);
 
@@ -96,8 +119,14 @@ public class SwapRequestController {
     // Get requests received by a user
     @GetMapping("/received/{userId}")
     public ResponseEntity<List<SwapRequest>> getReceivedRequests(
-            @PathVariable Long userId
+            @PathVariable Long userId,
+            Authentication authentication
     ) {
+
+        User currentUser = userRepository.findByEmailIgnoreCase(authentication.getName()).orElse(null);
+        if (currentUser == null || !currentUser.getId().equals(userId)) {
+            return ResponseEntity.status(403).build();
+        }
 
         User user = userRepository.findById(userId).orElse(null);
 
@@ -154,7 +183,8 @@ public ResponseEntity<List<SwapResponse>> getMyReceivedRequests(
         // Accept a swap request
     @PutMapping("/{id}/accept")
     public ResponseEntity<?> acceptSwapRequest(
-            @PathVariable Long id
+            @PathVariable Long id,
+            Authentication authentication
     ) {
 
         SwapRequest swapRequest =
@@ -162,6 +192,11 @@ public ResponseEntity<List<SwapResponse>> getMyReceivedRequests(
 
         if (swapRequest == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (currentUser == null || !swapRequest.getReceiver().getId().equals(currentUser.getId())) {
+            return ResponseEntity.status(403).body("Only the swap recipient can accept this request");
         }
 
         if (swapRequest.getStatus() != SwapRequest.Status.PENDING) {
@@ -182,7 +217,8 @@ public ResponseEntity<List<SwapResponse>> getMyReceivedRequests(
     // Reject a swap request
     @PutMapping("/{id}/reject")
     public ResponseEntity<?> rejectSwapRequest(
-            @PathVariable Long id
+            @PathVariable Long id,
+            Authentication authentication
     ) {
 
         SwapRequest swapRequest =
@@ -190,6 +226,11 @@ public ResponseEntity<List<SwapResponse>> getMyReceivedRequests(
 
         if (swapRequest == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (currentUser == null || !swapRequest.getReceiver().getId().equals(currentUser.getId())) {
+            return ResponseEntity.status(403).body("Only the swap recipient can reject this request");
         }
 
         if (swapRequest.getStatus() != SwapRequest.Status.PENDING) {
@@ -210,7 +251,8 @@ return ResponseEntity.ok(
     // Mark an accepted swap as completed
     @PutMapping("/{id}/complete")
     public ResponseEntity<?> completeSwapRequest(
-            @PathVariable Long id
+            @PathVariable Long id,
+            Authentication authentication
     ) {
 
         SwapRequest swapRequest =
@@ -218,6 +260,12 @@ return ResponseEntity.ok(
 
         if (swapRequest == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        User currentUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+        if (currentUser == null || (!swapRequest.getSender().getId().equals(currentUser.getId())
+                && !swapRequest.getReceiver().getId().equals(currentUser.getId()))) {
+            return ResponseEntity.status(403).body("Only swap participants can complete this request");
         }
 
         if (swapRequest.getStatus() != SwapRequest.Status.ACCEPTED) {

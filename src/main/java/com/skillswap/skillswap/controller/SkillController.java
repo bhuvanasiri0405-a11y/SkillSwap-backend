@@ -47,7 +47,7 @@ public class SkillController {
     @GetMapping("/my-skills")
     public ResponseEntity<?> getMySkills(Authentication authentication) {
         User user = getCurrentUser(authentication);
-        List<Skill> skills = skillRepository.findByUser(user);
+        List<Skill> skills = skillRepository.findByUserAndActiveTrue(user);
         List<SkillResponse> response = skills.stream().map(SkillResponse::fromEntity).toList();
         return ResponseEntity.ok(response);
     }
@@ -55,7 +55,7 @@ public class SkillController {
     // Browse all skills from all users (for finding someone to swap with)
     @GetMapping
     public ResponseEntity<?> getAllSkills() {
-        List<Skill> skills = skillRepository.findAll();
+        List<Skill> skills = skillRepository.findByActiveTrueAndUserActiveTrue();
         List<SkillResponse> response = skills.stream().map(SkillResponse::fromEntity).toList();
         return ResponseEntity.ok(response);
     }

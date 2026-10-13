@@ -23,6 +23,9 @@ public class User {
 
     @Column(nullable = false)
     private String role = "USER";
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
+    private boolean active = true;
 }
 
-   
+

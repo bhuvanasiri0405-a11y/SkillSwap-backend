@@ -21,4 +21,7 @@ public interface SwapRequestRepository extends JpaRepository<SwapRequest, Long> 
             User sender,
             SwapRequest.Status status
     );
+
+    long countByStatus(SwapRequest.Status status);
+    long countBySenderOrReceiver(User sender, User receiver);
 }
